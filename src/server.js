@@ -31,13 +31,17 @@ import { randomId, sha256 } from "./lib/crypto.js";
 // Configuration
 // ═══════════════════════════════════════════════════════════════
 
-const REGISTRY_URL = process.env.VLI_REGISTRY_URL || "https://verifylinkinfra.com/registry-api";
+// VLI_VAV_URL — the VAV API base; defaults to the public production URL.
+// VLI_API_KEY — the user's VAV API key (issued at verifylinkinfra.com/vault).
+//               When set, anchoring is enabled. When unset, the MCP works
+//               offline-only (seals stored locally, no public anchor).
+const VAV_URL = process.env.VLI_VAV_URL || "https://verifylinkinfra.com";
 const ART_API = process.env.VLI_ART_API || "https://vliworkspaces.com/api";
 const ART_TOKEN = process.env.VLI_ART_TOKEN || process.env.VLI_AUTH_TOKEN || "";
 const ART_ORG_ID = process.env.VLI_ORG_ID || "";
 const AGENT_ID = process.env.VLI_AGENT_ID || "claude-code";
 const AGENT_NAME = process.env.VLI_AGENT_NAME || "Claude Code AI";
-const AGENT_MODEL = process.env.VLI_AGENT_MODEL || "claude-opus-4-6";
+const AGENT_MODEL = process.env.VLI_AGENT_MODEL || "claude-opus-4-7";
 const AGENT_VENDOR = process.env.VLI_AGENT_VENDOR || "Anthropic";
 
 // Initialize DB on startup
@@ -384,13 +388,13 @@ server.tool(
     // Create Merkle anchor batch
     const batch = createAnchorBatch();
 
-    // Optionally anchor to VLI registry
+    // Optionally anchor the batch via VAV (auth + meter)
     let anchorResult = null;
-    if ((anchor !== false) && batch && REGISTRY_URL) {
+    if ((anchor !== false) && batch) {
       try {
-        anchorResult = await submitAnchor(batch.batch_id, REGISTRY_URL);
+        anchorResult = await submitAnchor(batch.batch_id);
       } catch (e) {
-        anchorResult = { status: "skipped", reason: e.message };
+        anchorResult = { status: "failed", reason: e.message };
       }
     }
 
@@ -482,6 +486,7 @@ async function main() {
   await server.connect(transport);
   console.error("[ai-trust] VLI AI Trust Protocol server running");
   console.error("[ai-trust] Public key: " + getKeys().publicKey.substring(0, 24) + "...");
+  console.error("[ai-trust] VAV: " + VAV_URL + " (anchoring " + (process.env.VLI_API_KEY ? "enabled" : "DISABLED — set VLI_API_KEY to enable") + ")");
 }
 
 main().catch((err) => {

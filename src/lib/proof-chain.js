@@ -176,31 +176,50 @@ export function createAnchorBatch() {
 }
 
 /**
- * Submit anchor batch to VLI Registry.
+ * Submit anchor batch to VAV (which forwards to the registry).
+ *
+ * Reads VLI_API_KEY (the user's VAV key) and VLI_VAV_URL (default
+ * https://verifylinkinfra.com). Without VLI_API_KEY, anchoring is skipped
+ * and the seal chain remains valid locally — anchoring is optional for
+ * offline / private use.
  *
  * @param {string} batchId
- * @param {string} registryUrl
- * @returns {object}
+ * @returns {Promise<object>} status: "anchored" | "skipped" | "failed"
  */
-export async function submitAnchor(batchId, registryUrl) {
+export async function submitAnchor(batchId) {
+  const apiKey = process.env.VLI_API_KEY;
+  const vavUrl = (process.env.VLI_VAV_URL || "https://verifylinkinfra.com").replace(/\/$/, "");
+
   const db = getDb();
   const batch = db.prepare("SELECT * FROM anchors WHERE batch_id = ?").get(batchId);
   if (!batch) throw new Error("Batch not found");
 
+  if (!apiKey) {
+    return { status: "skipped", reason: "VLI_API_KEY not set", batch_id: batchId };
+  }
+
   try {
-    const res = await fetch(registryUrl + "/api/anchor", {
+    const res = await fetch(vavUrl + "/api/anchor", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey,
+      },
       body: JSON.stringify({
-        batch_id: batch.batch_id,
         merkle_root: batch.merkle_root,
+        batch_id: batch.batch_id,
         event_count: batch.event_count,
         source: "mcp-ai-trust",
       }),
     });
 
-    if (!res.ok) throw new Error("Registry returned " + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data.message || data.error || `HTTP ${res.status}`;
+      db.prepare("UPDATE anchors SET status = 'failed' WHERE batch_id = ?").run(batchId);
+      return { status: "failed", batch_id: batchId, error: msg, http_status: res.status };
+    }
 
     db.prepare(
       "UPDATE anchors SET status = 'anchored', registry_ref = ?, anchored_at = ? WHERE batch_id = ?"
@@ -208,9 +227,7 @@ export async function submitAnchor(batchId, registryUrl) {
 
     return { status: "anchored", batch_id: batchId, registry: data };
   } catch (err) {
-    db.prepare(
-      "UPDATE anchors SET status = 'failed' WHERE batch_id = ?"
-    ).run(batchId);
+    db.prepare("UPDATE anchors SET status = 'failed' WHERE batch_id = ?").run(batchId);
     return { status: "failed", batch_id: batchId, error: err.message };
   }
 }

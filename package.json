@@ -1,6 +1,6 @@
 {
-  "name": "@vli/mcp-ai-trust",
-  "version": "0.1.0",
+  "name": "@verifylinkinfrastructure/mcp-ai-trust",
+  "version": "0.1.1",
   "description": "VLI AI Trust Protocol — cryptographic accountability for AI decisions. Every AI action sealed, signed, and anchored.",
   "type": "module",
   "main": "src/server.js",
@@ -8,16 +8,28 @@
     "mcp-ai-trust": "src/server.js"
   },
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "better-sqlite3": "^11.0.0"
   },
-  "keywords": ["mcp", "ai-trust", "audit", "cryptographic-proof", "ed25519", "vli"],
+  "keywords": [
+    "mcp",
+    "ai-trust",
+    "audit",
+    "cryptographic-proof",
+    "ed25519",
+    "vli"
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/VerifyLinkInfra-cloud/mcp-ai-trust"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.1"
   }
 }

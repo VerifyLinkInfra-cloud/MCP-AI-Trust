@@ -17,33 +17,38 @@ Every event is signed with Ed25519, hash-linked to the previous event, and optio
 
 ## Install
 
+### One-line install in Claude Code
+
 ```bash
-# Clone and install
-git clone https://github.com/VerifyLinkInfra-cloud/mcp-ai-trust.git
-cd mcp-ai-trust
-npm install
+claude mcp add ai-trust -- npx -y @verifylinkinfrastructure/mcp-ai-trust
 ```
 
-### Claude Code
-
-Add to your Claude Code MCP settings (`~/.claude/settings.json`):
+Then set your API key in `~/.claude/settings.json` (or your shell):
 
 ```json
 {
   "mcpServers": {
     "ai-trust": {
-      "command": "node",
-      "args": ["/path/to/mcp-ai-trust/src/server.js"]
+      "command": "npx",
+      "args": ["-y", "@verifylinkinfrastructure/mcp-ai-trust"],
+      "env": {
+        "VLI_API_KEY": "<your key from verifylinkinfra.com/vault>"
+      }
     }
   }
 }
 ```
 
-### Environment Variables (Optional)
+Get your free API key at [verifylinkinfra.com/vault](https://verifylinkinfra.com/vault) — first 5 anchors per month are free.
+
+Without `VLI_API_KEY`, the MCP runs in **offline mode**: events are still sealed and chained locally and the proof chain is independently verifiable, but nothing is anchored to the public log.
+
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VLI_REGISTRY_URL` | `https://verifylinkinfra.com/registry-api` | VLI transparency registry for Merkle anchoring |
+| `VLI_API_KEY` | (unset) | Your VAV API key. Required for public anchoring. |
+| `VLI_VAV_URL` | `https://verifylinkinfra.com` | VAV base URL |
 | `VLI_AGENT_ID` | `claude-code` | Identifier for this AI agent |
 | `VLI_AGENT_NAME` | `Claude Code AI` | Human-readable agent name |
 | `VLI_TRUST_DATA_DIR` | `./data` | Directory for the SQLite proof store |
